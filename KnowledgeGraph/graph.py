@@ -8,70 +8,18 @@ from spacy.lang.en.examples import sentences
 from sklearn.decomposition import PCA
 from word2number import w2n
 
+from KnowledgeGraph.nodes import Node
+from KnowledgeGraph.edges import Edge
+from Data.common_words import common_words
 from Utilitites.load_json import load_json
 
 
-"""Using object oriented paradigm, should aim to create a representation of a graph where, as everything is object based, 
-there are no repetitions."""
-
-
-class Edge:
-
-    def __init__(self, parent, child, edge_type, edge_weight=1):
-        self.edge_identifier = f"{parent.identifier}-{child.identifier}"
-        self.edge_type = edge_type
-        self.edge_weight = edge_weight
-
-        self.parent_node = weakref.ref(parent)
-        self.child_node = weakref.ref(child)
-
-    def delete_edge(self):
-        self.parent_node.remove_child(self.child_node)
-        self.child_node_node.remove_parent(self.parent_node)
-        del self
-
-    def check_connected(self):
-        if self.parent_node() is None:
-            print(f"Parent dead, deleting {self.edge_identifier}")
-            return False
-        if self.child_node() is None:
-            print(f"Child dead, deleting {self.edge_identifier}")
-            return False
-        return True
-
-
-class Node:
-
-    def __init__(self, level, id_n, document, content):
-        self.identifier = f"{document}-{level}:{id_n}"
-        self.level = level
-        self.content = content
-        self.document = document
-
-        self.edges = []
-        self.embedding = []
-
-        self.individual_words = [word.lower().replace(".", "") for word in content.split(" ")]
-
-    def add_edge(self, edge):
-        self.edges.append(weakref.ref(edge))
-
-    def get_child_edges(self):
-        return [edge() for edge in self.edges if edge().parent_node is self]
-
-    def get_parent_edges(self):
-        return [edge() for edge in self.edges if edge().child_node is self]
-
-    def compute_individual_word_indices(self):
-        ...
-
-
 class KnowledgeGraph:
-    """Principles underlying design - do not store information in more than one place unless this is accomplished
-    through pointer links"""
-    # TODO: Implement in such a way that a graph can contain its own subgraphs (but that the nodes are still accessible
-    #  in the same way (while graph attributes are also accessible). Alternatively, just do this KG separation through
-    #  decomposition - or subgraph identification?
+    """Principles underlying design
+    - do not store information in more than one place unless this is accomplished through weak references (thus deletion
+    of one is deletion everywhere).
+    - Everything is object based
+    """
 
     def __init__(self):
         self.nodes = []
@@ -83,7 +31,12 @@ class KnowledgeGraph:
         self.levels_tally = [0, 0, 0, 0, 0]
         self.spacy_model = spacy.load("en_core_web_md")
 
+        self.inferred_entity_count = 0
+        self.node_content = []
+
     def add_document_to_graph(self, data, document):
+        """Adds a json-encoded document to the graph."""
+
         if document in self.documents_used:
             print("Error, document name already used...")
             return
@@ -91,50 +44,44 @@ class KnowledgeGraph:
         self.documents_used.append(document)
         self.create_nodes(data, document, level=0)
         self.create_document_edges(document)
-        # TODO: Instansiate edges within nodes and only have variables referring to them within the nodes - so when the
-        #  nodes are deleted, the edges are too. This better reflects the dependency - nodes without edges but no edges
-        #  without nodes
 
-    def check_edges(self):
-        """Checks all edge objects to see if their weak references to """
-        # Check all edge objects
+    def remove_invalid_edges_and_nodes(self):
+        """Checks all edge/nodes to see if their weak references to their nodes/edges are to Nonetypes - i.e.  the node
+        no longer exists (and so the edge should be deleted) """
+
         to_remove = []
         for i, edge in enumerate(self.edges):
             if not edge.check_connected():
                 to_remove.append(i)
-
+                print("Found invalid edge.")
         for i in reversed(to_remove):
             del self.edges[i]
 
-        # Check all weak references in Node objects
-
+        # Check all weak references in Node objects to edges
         for node in self.nodes:
-            # TODO: Move code to node class.
-            to_remove = []
+            node.remove_incomplete_edges()
 
-            for i, edge in enumerate(node.edges):
-                if edge() is None:
-                    print("Edge no longer exists, deleting")
-                    to_remove.append(i)
-            for i in reversed(to_remove):
-                del node.edges[i]
+    def create_node(self, level, document, content):
+        new_node = Node(level, self.levels_tally[level], document, content)
+        self.nodes.append(new_node)
+        self.node_content.append(content)
+        return new_node
 
     def create_nodes(self, data, document, level):
+        """Recursive method that creates nodes out of all the entries in a json document."""
         if type(data) is list:
             for d in data:
                 self.levels_tally[level] += 1
-                new_node = Node(level, self.levels_tally[level], document, d)
-                self.nodes.append(new_node)
+                self.create_node(level, document, d)
         else:
             for key in data.keys():
                 if key != "None":
                     self.levels_tally[level] += 1
-                    new_node = Node(level, self.levels_tally[level], document, key)
-                    self.nodes.append(new_node)
+                    self.create_node(level, document, key)
                 self.create_nodes(data[key], document, level+1)
 
     def build_flow_edges(self, document):
-        """Adds all edges that make up the structure of the document read from top to bottom"""
+        """Adds all edges that make up the structure of the document read from top to bottom."""
         document_nodes = [node for node in self.nodes if node.document == document]
 
         for i, node in enumerate(document_nodes[1:]):
@@ -144,6 +91,7 @@ class KnowledgeGraph:
             node.add_edge(new_edge)
 
     def build_structural_edges(self, document):
+        """Builds edges which represent ownership i.e. document owns headings, headings own paragraphs."""
         document_nodes = [node for node in self.nodes if node.document == document]
 
         for i, node in enumerate(reversed(document_nodes)):
@@ -166,27 +114,51 @@ class KnowledgeGraph:
         self.build_flow_edges(document)
         self.build_structural_edges(document)
 
-    def create_interdocument_edges(self):
+    def harvest_entity_links(self):
         """
         Types:
         - Key words - A single node for a word that is shared. Will eventually want to exclude some words.
-        - Key phrases - Need to think of a way to do this.
 
         Be sure to check the created edges dont already exist - might be easier to wipe them all out first.
         :return:
         """
-        for i, node_1 in enumerate(self.nodes):
-            for j, node_2 in enumerate(self.nodes):
+        starting_nodes = len(self.nodes)
+
+        for i in range(starting_nodes):
+            node_1 = self.nodes[i]
+            print(i)
+            for j in range(starting_nodes):
+                node_2 = self.nodes[j]
                 if i == j:
                     pass
                 else:
                     for word_1 in node_1.individual_words:
                         for word_2 in node_2.individual_words:
                             if word_1 == word_2:
-                                new_edge = Edge(node_1, node_2, f"Keyword-{word_1}")  # TODO: Make clear this edge is non-directional. Or create keyword entity (first check whether this already exists).
-                                self.edges.append(new_edge)
-                                node_1.add_edge(new_edge)
-                                node_2.add_edge(new_edge)
+                                new_node = self.create_new_inferred_entity(word_1)
+                                if new_node is not None:
+                                    new_edge_1 = Edge(parent=new_node, child=node_1, edge_type=f"Keyword-{word_1}")
+                                    new_edge_2 = Edge(parent=new_node, child=node_2, edge_type=f"Keyword-{word_1}")
+                                    self.edges.append(new_edge_1)
+                                    self.edges.append(new_edge_2)
+
+                                    new_node.add_edge(new_edge_1)
+                                    new_node.add_edge(new_edge_2)
+
+                                    node_1.add_edge(new_edge_1)
+                                    node_2.add_edge(new_edge_2)
+
+    def create_new_inferred_entity(self, content):
+        """Checks if a new word exists as an entity in the graph already and that it isnt a common word. If not, it
+        creates a new node named this."""
+        # all_node_content = [node.content for node in self.nodes]  # TODO: Improve speed: maybe keep another record of content (and delete from here when deleting nodes)
+        all_node_content = self.node_content
+        if content in all_node_content:
+            return self.nodes[all_node_content.index(content)]
+        else:
+            if content not in common_words:
+                new_entity = self.create_node(level=0, document="Inferred", content=content)
+                return new_entity
 
     def compute_node_embeddings(self):
         node_embeddings = []
@@ -220,17 +192,43 @@ class KnowledgeGraph:
         colour_map = [colours[uniques.index(value)] for value in document_identifiers]
 
         nx.draw(G, pos, node_color=colour_map)
-        nx.draw_networkx_labels(G, pos, labels=labels, font_size=6, alpha=0.1)
+        nx.draw_networkx_labels(G, pos, labels=labels, font_size=6)
         plt.show()
 
     def delete_node(self, node_id):
         """
+        Attempts to make this faster than checking for validity of every existing edge
         Find node via id.
         del node
         check_edges()?
         :param node_id:
         :return:
         """
+        node_ids = [node.identifier for node in self.nodes]
+        node_index = node_ids.index(node_id)
+
+        # Delete node content shorthand
+        del self.node_content[node_index]
+
+        # Find location of edges
+        edges_to_delete = self.nodes[node_index].edges
+        edges_to_delete_ids = [edge().identifier for edge in edges_to_delete]
+        edge_ids = [edge.identifier for edge in self.edges]
+        edge_indexes = [edge_ids.index(edge_id) for edge_id in edges_to_delete_ids]
+
+        # Delete edges
+        for edge_i in reversed(edge_indexes):
+            self.edges[edge_i].delete_edge()
+            del self.edges[edge_i]
+
+        # Find location of effected nodes.
+
+        # Delete node
+        del self.nodes[node_index]
+
+        # TODO: Check that no null edges remain...
+
+        x = True
 
 
 if __name__ == "__main__":
@@ -241,5 +239,5 @@ if __name__ == "__main__":
     graph.add_document_to_graph(file, "Kant")
     graph.add_document_to_graph(file2, "Zarathustra")
     graph.compute_node_embeddings()
-    graph.check_edges()
+    graph.remove_invalid_edges_and_nodes()
     graph.display_graph()
