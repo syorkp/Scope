@@ -3,7 +3,7 @@ import weakref
 
 class Edge:
 
-    def __init__(self, parent, child, edge_type, edge_weight=1):
+    def __init__(self, parent, child, edge_type: str, edge_weight: int = 1):
         self.identifier = f"{parent.identifier}-{child.identifier}-{edge_type}"
         self.edge_type = edge_type
         self.edge_weight = edge_weight

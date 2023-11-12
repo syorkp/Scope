@@ -7,6 +7,7 @@ import numpy as np
 from spacy.lang.en.examples import sentences
 from sklearn.decomposition import PCA
 from word2number import w2n
+import gephistreamer
 
 from KnowledgeGraph.nodes import Node
 from KnowledgeGraph.edges import Edge
@@ -34,16 +35,16 @@ class KnowledgeGraph:
         self.inferred_entity_count = 0
         self.node_content = []
 
-    def add_document_to_graph(self, data, document):
+    def add_document_to_graph(self, data: dict, document_name: str):
         """Adds a json-encoded document to the graph."""
 
-        if document in self.documents_used:
+        if document_name in self.documents_used:
             print("Error, document name already used...")
             return
 
-        self.documents_used.append(document)
-        self.create_nodes(data, document, level=0)
-        self.create_document_edges(document)
+        self.documents_used.append(document_name)
+        self.create_nodes(data, document_name, level=0)
+        self.create_document_edges(document_name)
 
     def remove_invalid_edges_and_nodes(self):
         """Checks all edge/nodes to see if their weak references to their nodes/edges are to Nonetypes - i.e.  the node
@@ -53,7 +54,6 @@ class KnowledgeGraph:
         for i, edge in enumerate(self.edges):
             if not edge.check_connected():
                 to_remove.append(i)
-                print("Found invalid edge.")
         for i in reversed(to_remove):
             del self.edges[i]
 
@@ -61,28 +61,35 @@ class KnowledgeGraph:
         for node in self.nodes:
             node.remove_incomplete_edges()
 
-    def create_node(self, level, document, content):
-        new_node = Node(level, self.levels_tally[level], document, content)
+    def create_node(self, level: int, document_name: str, content: str):
+        if document_name != "Inferred":
+            id_n = self.levels_tally[level]
+        else:
+            id_n = self.inferred_entity_count
+        new_node = Node(level=level,
+                        id_n=id_n,
+                        document_name=document_name,
+                        content=content)
         self.nodes.append(new_node)
         self.node_content.append(content)
         return new_node
 
-    def create_nodes(self, data, document, level):
+    def create_nodes(self, data: dict, document_name: str, level: int):
         """Recursive method that creates nodes out of all the entries in a json document."""
         if type(data) is list:
             for d in data:
                 self.levels_tally[level] += 1
-                self.create_node(level, document, d)
+                self.create_node(level, document_name, d)
         else:
             for key in data.keys():
                 if key != "None":
                     self.levels_tally[level] += 1
-                    self.create_node(level, document, key)
-                self.create_nodes(data[key], document, level+1)
+                    self.create_node(level, document_name, key)
+                self.create_nodes(data[key], document_name, level+1)
 
-    def build_flow_edges(self, document):
+    def build_flow_edges(self, document: dict):
         """Adds all edges that make up the structure of the document read from top to bottom."""
-        document_nodes = [node for node in self.nodes if node.document == document]
+        document_nodes = [node for node in self.nodes if node.document_name == document]
 
         for i, node in enumerate(document_nodes[1:]):
             new_edge = Edge(document_nodes[i], node, edge_type="Flow")
@@ -90,9 +97,9 @@ class KnowledgeGraph:
             document_nodes[i].add_edge(new_edge)
             node.add_edge(new_edge)
 
-    def build_structural_edges(self, document):
+    def build_structural_edges(self, document: dict):
         """Builds edges which represent ownership i.e. document owns headings, headings own paragraphs."""
-        document_nodes = [node for node in self.nodes if node.document == document]
+        document_nodes = [node for node in self.nodes if node.document_name == document]
 
         for i, node in enumerate(reversed(document_nodes)):
             node_level = node.level
@@ -110,7 +117,7 @@ class KnowledgeGraph:
 
                     break
 
-    def create_document_edges(self, document):
+    def create_document_edges(self, document: dict):
         self.build_flow_edges(document)
         self.build_structural_edges(document)
 
@@ -126,7 +133,6 @@ class KnowledgeGraph:
 
         for i in range(starting_nodes):
             node_1 = self.nodes[i]
-            print(i)
             for j in range(starting_nodes):
                 node_2 = self.nodes[j]
                 if i == j:
@@ -148,16 +154,16 @@ class KnowledgeGraph:
                                     node_1.add_edge(new_edge_1)
                                     node_2.add_edge(new_edge_2)
 
-    def create_new_inferred_entity(self, content):
+    def create_new_inferred_entity(self, content: str):
         """Checks if a new word exists as an entity in the graph already and that it isnt a common word. If not, it
         creates a new node named this."""
-        # all_node_content = [node.content for node in self.nodes]  # TODO: Improve speed: maybe keep another record of content (and delete from here when deleting nodes)
         all_node_content = self.node_content
         if content in all_node_content:
             return self.nodes[all_node_content.index(content)]
         else:
             if content not in common_words:
-                new_entity = self.create_node(level=0, document="Inferred", content=content)
+                new_entity = self.create_node(level=0, document_name="Inferred", content=content)
+                self.inferred_entity_count += 1
                 return new_entity
 
     def compute_node_embeddings(self):
@@ -177,8 +183,10 @@ class KnowledgeGraph:
 
     def display_graph(self):
         colours = ['blue', 'red', 'green', 'orange', "yellow"]
-        document_identifiers = [node.document for node in self.nodes]
-        uniques = list(set(document_identifiers))
+        document_identifiers = [node.document_name for node in self.nodes]
+        edge_types = [edge.edge_type for edge in self.edges]
+        unique_documents = list(set(document_identifiers))
+        unique_edge_types = list(set(edge_types))
         node_identifiers = [node.identifier for node in self.nodes]
         node_content = [node.content for node in self.nodes]
         node_embeddings = [node.embedding for node in self.nodes]
@@ -189,13 +197,26 @@ class KnowledgeGraph:
         # pos = nx.spring_layout(G)
         pos = {label:node_embeddings[i] for i, label in enumerate(node_identifiers)}
         labels = {node_identifier: node_identifier for node_identifier, node_content in zip(node_identifiers, node_content)}
-        colour_map = [colours[uniques.index(value)] for value in document_identifiers]
+        node_colour_map = [colours[unique_documents.index(value)] for value in document_identifiers]
+        edge_colour_map = [colours[unique_edge_types.index(value)] for value in edge_types]
 
-        nx.draw(G, pos, node_color=colour_map)
+        nx.draw(G, pos, node_color=node_colour_map, edge_color=edge_colour_map)
         nx.draw_networkx_labels(G, pos, labels=labels, font_size=6)
         plt.show()
 
-    def delete_node(self, node_id):
+    def display_graph_gephi(self):
+        stream = gephistreamer.Streamer(gephistreamer.streamer.GephiREST(hostname="localhost", port=8080,
+                                                                       workspace="Workspace 1"))
+        for i in range(10):
+            node = gephistreamer.graph.Node(self.nodes[i].content)
+            stream.add_node(node)
+        node2 = gephistreamer.graph.Node(self.nodes[10].content)
+        stream.add_node(node2)
+        edge = gephistreamer.graph.Edge(node, node2)
+        stream.add_edge(edge)
+        stream.commit()
+
+    def delete_node(self, node_id: str):
         """
         Attempts to make this faster than checking for validity of every existing edge
         Find node via id.
@@ -221,14 +242,51 @@ class KnowledgeGraph:
             self.edges[edge_i].delete_edge()
             del self.edges[edge_i]
 
-        # Find location of effected nodes.
-
         # Delete node
         del self.nodes[node_index]
 
-        # TODO: Check that no null edges remain...
+        # TODO: Update levels tally
 
-        x = True
+    def decompose_nodes(self):
+        """
+        :return:
+        """
+        print("Original Nodes: " + str(len(self.nodes)))
+        new_nodes_count = 0
+        deleted_nodes_count = 0
+
+        to_delete = []
+        all_new_nodes = []
+        all_new_edges = []
+        for i, node in enumerate(self.nodes):
+            existing_nodes_at_level = self.levels_tally[node.level + 1]
+
+            new_nodes, new_edges = node.decompose(existing_nodes_at_level=existing_nodes_at_level)
+
+            if len(new_nodes) > 1:
+                deleted_nodes_count += 1
+                new_nodes_count += len(new_nodes)
+                to_delete.append(i)
+                all_new_nodes += new_nodes
+                all_new_edges += new_edges
+
+                # Update levels tally
+                self.levels_tally[node.level] -= 1
+                self.levels_tally[node.level + 1] += len(new_nodes)
+
+        for i in reversed(to_delete):
+            self.delete_node(self.nodes[i].identifier)
+
+        self.nodes += all_new_nodes
+        self.edges += all_new_edges
+
+        # TODO: Remember to update the content store.
+
+    def recompose_nodes(self):
+        """
+        Use document structure to consolidate nodes into smaller ones
+        :return:
+        """
 
 
 if __name__ == "__main__":
