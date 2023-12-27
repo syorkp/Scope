@@ -2,8 +2,10 @@ import copy
 import cProfile
 import pstats
 
-from Utilitites.load_json import load_json
+from Utilitites.json_operations import load_json_entity
+from Utilitites.csv_operations import save_graph_to_csv, load_graph_elements_from_csv
 from KnowledgeGraph.graph import KnowledgeGraph
+from KnowledgeGraph.edges import Edge
 
 
 class GraphManager:
@@ -19,13 +21,49 @@ class GraphManager:
 
         self.graphs = {}
 
+    def save_graph(self, graph_name: str):
+        save_graph_to_csv(self.graphs[graph_name], graph_name)
+
+    def load_graph_csv(self, graph_name: str, file_name: str):
+        graph_nodes, graph_edges = load_graph_elements_from_csv(file_name)
+        new_graph = self.graphs[graph_name]
+
+        # Creating nodes
+        node_contents = graph_nodes.content
+        node_id_n = graph_nodes.id_n
+        node_level = graph_nodes.level
+        node_identifiers = graph_nodes.node_identifier
+        node_documents = graph_nodes.document
+
+        for identifier, level, id_n, content, document in zip(node_identifiers, node_level, node_id_n, node_contents, node_documents):
+            new_node = new_graph.create_node(level=level, document_name=document, content=content)
+            new_node.id_n = id_n
+            new_node.identifier = identifier
+
+        # Creating Edges
+        edge_identifiers = graph_edges.edge_identifier
+        edge_type = graph_edges.edge_type
+        edge_weight = graph_edges.edge_weight
+        edge_source = graph_edges.source
+        edge_target = graph_edges.target
+
+        for identifier, type, weight, source, target in zip(edge_identifiers, edge_type, edge_weight, edge_source, edge_target):
+
+            parent_node = new_graph.return_node(source)
+            child_node = new_graph.return_node(target)
+            new_edge = Edge(parent=parent_node, child=child_node, edge_type=type, edge_weight=weight)
+            new_graph.edges.append(new_edge)
+
+            parent_node.add_edge(new_edge)
+            child_node.add_edge(new_edge)
+
     def create_graph(self, graph_name: str):
-        # TODO: Check doesnt overwrite exisinng
+        # TODO: Check doesnt overwrite existing
         self.graphs[graph_name] = KnowledgeGraph()
 
     def add_json_to_graph(self, graph_name: str, json_file_name: str):
-        # TODO: Check doesnt overwrite exisinng
-        file = load_json(json_file_name)
+        # TODO: Check doesnt overwrite existing
+        file = load_json_entity(json_file_name)
         self.graphs[graph_name].add_document_to_graph(file, json_file_name)
 
     def run_routine_graph_computations(self, graph_name):
@@ -48,7 +86,8 @@ class GraphManager:
 
     def display_graph(self, graph_name: str):
         self.graphs[graph_name].remove_invalid_edges_and_nodes()
-        self.graphs[graph_name].display_graph_gephi()
+        # self.graphs[graph_name].display_graph_gephi()
+        self.graphs[graph_name].display_graph_networkx()
 
     def decompose_graph(self, graph_name: str):
         """

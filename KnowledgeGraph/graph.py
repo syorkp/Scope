@@ -1,18 +1,19 @@
-import weakref
 import networkx as nx
+
+
 import matplotlib.pyplot as plt
+
+
 import spacy
 import numpy as np
 
-from spacy.lang.en.examples import sentences
 from sklearn.decomposition import PCA
-from word2number import w2n
 import gephistreamer
 
 from KnowledgeGraph.nodes import Node
 from KnowledgeGraph.edges import Edge
-from Data.common_words import common_words
-from Utilitites.load_json import load_json
+from Data.Entities.common_words import common_words
+from Utilitites.json_operations import load_json_entity
 
 
 class KnowledgeGraph:
@@ -22,7 +23,7 @@ class KnowledgeGraph:
     - Everything is object based
     """
 
-    def __init__(self):
+    def __init__(self, autosave=True):
         self.nodes = []
         self.edges = []
 
@@ -35,8 +36,18 @@ class KnowledgeGraph:
         self.inferred_entity_count = 0
         self.node_content = []
 
+        self.autosave_graph = autosave
+        self.maintained_formats = []
+
+    def _run_operation(self):
+        """A method that runs every time a major operation occurs, to allow maintenance to be carried out e.g. autosave"""
+        if self.autosave_graph:
+            for f in self.maintained_formats:
+                ...  # TODO: Autosave
+
     def add_document_to_graph(self, data: dict, document_name: str):
         """Adds a json-encoded document to the graph."""
+        self._run_operation()
 
         if document_name in self.documents_used:
             print("Error, document name already used...")
@@ -49,6 +60,7 @@ class KnowledgeGraph:
     def remove_invalid_edges_and_nodes(self):
         """Checks all edge/nodes to see if their weak references to their nodes/edges are to Nonetypes - i.e.  the node
         no longer exists (and so the edge should be deleted) """
+        self._run_operation()
 
         to_remove = []
         for i, edge in enumerate(self.edges):
@@ -76,6 +88,8 @@ class KnowledgeGraph:
 
     def create_nodes(self, data: dict, document_name: str, level: int):
         """Recursive method that creates nodes out of all the entries in a json document."""
+        self._run_operation()
+
         if type(data) is list:
             for d in data:
                 self.levels_tally[level] += 1
@@ -118,6 +132,8 @@ class KnowledgeGraph:
                     break
 
     def create_document_edges(self, document: dict):
+        self._run_operation()
+
         self.build_flow_edges(document)
         self.build_structural_edges(document)
 
@@ -129,6 +145,8 @@ class KnowledgeGraph:
         Be sure to check the created edges dont already exist - might be easier to wipe them all out first.
         :return:
         """
+        self._run_operation()
+
         starting_nodes = len(self.nodes)
 
         for i in range(starting_nodes):
@@ -166,7 +184,16 @@ class KnowledgeGraph:
                 self.inferred_entity_count += 1
                 return new_entity
 
+    def return_node(self, node_identifier):
+        """The most efficient way of identifying the node from the identifier"""
+        for node in self.nodes:
+            if node.identifier == node_identifier:
+                return node
+        print("Node does not exist")
+
     def compute_node_embeddings(self):
+        self._run_operation()
+
         node_embeddings = []
         # Note that this method fails if a word is not in the model e.g. here: perspectivism.
         for node in self.nodes:
@@ -181,7 +208,9 @@ class KnowledgeGraph:
         for i, node in enumerate(self.nodes):
             self.nodes[i].embedding = reduced_embeddings[i]
 
-    def display_graph(self):
+    def display_graph_networkx(self):
+        self._run_operation()
+
         colours = ['blue', 'red', 'green', 'orange', "yellow"]
         document_identifiers = [node.document_name for node in self.nodes]
         edge_types = [edge.edge_type for edge in self.edges]
@@ -202,9 +231,12 @@ class KnowledgeGraph:
 
         nx.draw(G, pos, node_color=node_colour_map, edge_color=edge_colour_map)
         nx.draw_networkx_labels(G, pos, labels=labels, font_size=6)
-        plt.show()
+        plt.show(block=True)
+        plt.interactive(False)
 
     def display_graph_gephi(self):
+        self._run_operation()
+
         stream = gephistreamer.Streamer(gephistreamer.streamer.GephiREST(hostname="localhost", port=8080,
                                                                        workspace="Workspace 1"))
         for i in range(10):
@@ -251,6 +283,8 @@ class KnowledgeGraph:
         """
         :return:
         """
+        self._run_operation()
+
         print("Original Nodes: " + str(len(self.nodes)))
         new_nodes_count = 0
         deleted_nodes_count = 0
@@ -287,11 +321,13 @@ class KnowledgeGraph:
         Use document structure to consolidate nodes into smaller ones
         :return:
         """
+        self._run_operation()
+
 
 
 if __name__ == "__main__":
-    file = load_json("Immanuel Kant - Wikipedia.json")
-    file2 = load_json("Thus Spoke Zarathustra - Wikipedia.json")
+    file = load_json_entity("Immanuel Kant - Wikipedia.json")
+    file2 = load_json_entity("Thus Spoke Zarathustra - Wikipedia.json")
 
     graph = KnowledgeGraph()
     graph.add_document_to_graph(file, "Kant")

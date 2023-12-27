@@ -5,7 +5,7 @@ import numpy as np
 from spacy.lang.en.examples import sentences
 from sklearn.decomposition import PCA
 
-from Utilitites.load_json import load_json
+from Utilitites.json_operations import load_json
 
 
 class KnowledgeGraph2:

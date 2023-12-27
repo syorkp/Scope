@@ -1,0 +1,10 @@
+networkx
+matplotlib
+numpy
+spacy
+bs4
+requests
+gephistreamer
+scikit-learn
+sklearn
+word2number

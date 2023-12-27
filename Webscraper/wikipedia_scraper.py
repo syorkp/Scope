@@ -67,9 +67,15 @@ class WikipediaScraper:
                             del self.wiki_contents[key_1][key_2][key_3][-1-i]
 
     def save_json(self):
-        with open(f"Wikipedia-Articles/{self.title}.json", "w") as file:
+        with open(f"../Data/{self.title}.json", "w") as file:
             as_json = json.dumps(self.wiki_contents)
             file.write(as_json)
+
+    def create_wiki_json(self):
+        self.load_soup()
+        self.strip_contents()
+        self.remove_empty_scopes()
+        self.save_json()
 
 
 if __name__ == "__main__":
@@ -77,26 +83,18 @@ if __name__ == "__main__":
     url2 = "https://en.wikipedia.org/wiki/%C3%9Cbermensch"
     url3 = "https://en.wikipedia.org/wiki/Thus_Spoke_Zarathustra"
     url4 = "https://en.wikipedia.org/wiki/Human,_All_Too_Human"
+    url5 = "https://en.wikipedia.org/wiki/Friedrich_Nietzsche"
     scraper = WikipediaScraper(url1)
-    scraper.load_soup()
-    scraper.strip_contents()
-    scraper.remove_empty_scopes()
-    scraper.save_json()
+    scraper.create_wiki_json()
 
     scraper = WikipediaScraper(url2)
-    scraper.load_soup()
-    scraper.strip_contents()
-    scraper.remove_empty_scopes()
-    scraper.save_json()
+    scraper.create_wiki_json()
 
     scraper = WikipediaScraper(url3)
-    scraper.load_soup()
-    scraper.strip_contents()
-    scraper.remove_empty_scopes()
-    scraper.save_json()
+    scraper.create_wiki_json()
 
     scraper = WikipediaScraper(url4)
-    scraper.load_soup()
-    scraper.strip_contents()
-    scraper.remove_empty_scopes()
-    scraper.save_json()
+    scraper.create_wiki_json()
+
+    scraper = WikipediaScraper(url5)
+    scraper.create_wiki_json()

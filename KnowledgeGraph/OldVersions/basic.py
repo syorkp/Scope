@@ -5,7 +5,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from graphviz import Digraph
 
-from Utilitites.load_json import load_json
+from Utilitites.json_operations import load_json
 
 
 class KnowledgeGraph1:
