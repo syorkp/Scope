@@ -1,5 +1,5 @@
+import os
 import networkx as nx
-
 
 import matplotlib.pyplot as plt
 
@@ -14,6 +14,7 @@ from KnowledgeGraph.nodes import Node
 from KnowledgeGraph.edges import Edge
 from Data.Entities.common_words import common_words
 from Utilitites.json_operations import load_json_entity
+from Utilitites.csv_operations import save_graph_to_csv
 
 
 class KnowledgeGraph:
@@ -23,7 +24,9 @@ class KnowledgeGraph:
     - Everything is object based
     """
 
-    def __init__(self, autosave=True):
+    def __init__(self, graph_name, autosave=True):
+        self.graph_name = graph_name
+
         self.nodes = []
         self.edges = []
 
@@ -40,7 +43,9 @@ class KnowledgeGraph:
         self.maintained_formats = []
 
     def _run_operation(self):
-        """A method that runs every time a major operation occurs, to allow maintenance to be carried out e.g. autosave"""
+        """
+        A method that runs every time a major operation occurs, to allow maintenance to be carried out e.g. autosave.
+        """
         if self.autosave_graph:
             for f in self.maintained_formats:
                 ...  # TODO: Autosave
@@ -235,18 +240,24 @@ class KnowledgeGraph:
         plt.interactive(False)
 
     def display_graph_gephi(self):
-        self._run_operation()
+        # The following commented code is from an attempt to stream the graph on a port.
+        # self._run_operation()
+        #
+        # stream = gephistreamer.Streamer(gephistreamer.streamer.GephiREST(hostname="localhost", port=8080,
+        #                                                                workspace="Workspace 1"))
+        # for i in range(10):
+        #     node = gephistreamer.graph.Node(self.nodes[i].content)
+        #     stream.add_node(node)
+        # node2 = gephistreamer.graph.Node(self.nodes[10].content)
+        # stream.add_node(node2)
+        # edge = gephistreamer.graph.Edge(node, node2)
+        # stream.add_edge(edge)
+        # stream.commit()
 
-        stream = gephistreamer.Streamer(gephistreamer.streamer.GephiREST(hostname="localhost", port=8080,
-                                                                       workspace="Workspace 1"))
-        for i in range(10):
-            node = gephistreamer.graph.Node(self.nodes[i].content)
-            stream.add_node(node)
-        node2 = gephistreamer.graph.Node(self.nodes[10].content)
-        stream.add_node(node2)
-        edge = gephistreamer.graph.Edge(node, node2)
-        stream.add_edge(edge)
-        stream.commit()
+        # The following instead just launces gephi with the csv.
+        # Save csv
+        save_graph_to_csv(graph=self, file_name=self.graph_name)
+        os.system(f"/home/sam/Programs/gephi-0.10.1/bin/gephi ./Data/Saved-Graphs/CSV/{self.graph_name}-edges.csv")
 
     def delete_node(self, node_id: str):
         """
@@ -324,12 +335,15 @@ class KnowledgeGraph:
         self._run_operation()
 
 
-
 if __name__ == "__main__":
     file = load_json_entity("Immanuel Kant - Wikipedia.json")
     file2 = load_json_entity("Thus Spoke Zarathustra - Wikipedia.json")
 
     graph = KnowledgeGraph()
+    # For calling directly on graph (may need to add to manager interface.
+    # graph.delete_node("Nietzsche-0:1")
+    # graph.remove_invalid_edges_and_nodes()
+    # graph.compute_node_embeddings()
     graph.add_document_to_graph(file, "Kant")
     graph.add_document_to_graph(file2, "Zarathustra")
     graph.compute_node_embeddings()

@@ -1,1 +1,1 @@
-Knowledge Graph contruction and management program. 
+Knowledge Graph construction and management program. 

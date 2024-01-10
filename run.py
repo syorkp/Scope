@@ -1,5 +1,6 @@
 from KnowledgeGraph.graph_manager import GraphManager
 
+
 if __name__ == "__main__":
     file_names = ["Immanuel Kant - Wikipedia.json", "Friedrich Nietzsche - Wikipedia.json",
                   "Thus Spoke Zarathustra - Wikipedia.json", "Ubermensch - Wikipedia.json",
@@ -9,13 +10,12 @@ if __name__ == "__main__":
     graph_manager.create_graph("Nietzsche")
     # graph_manager.add_json_to_graph("Nietzsche", file_names[1])
     # graph_manager.decompose_graph("Nietzsche")
-    # graph_manager.run_routine_graph_computations("Nietzsche")
     # graph_manager.save_graph("Nietzsche")
-    # graph_manager.display_graph("Nietzsche")
     # graph_manager.close()
 
-
     graph_manager.load_graph_csv("Nietzsche", file_name="Nietzsche")
+    graph_manager.run_routine_graph_computations("Nietzsche")
 
+    graph_manager.display_graph("Nietzsche", display_mode="gephi")
 
 
