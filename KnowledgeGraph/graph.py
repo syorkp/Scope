@@ -111,10 +111,7 @@ class KnowledgeGraph:
         document_nodes = [node for node in self.nodes if node.document_name == document]
 
         for i, node in enumerate(document_nodes[1:]):
-            new_edge = Edge(document_nodes[i], node, edge_type="Flow")
-            self.edges.append(new_edge)
-            document_nodes[i].add_edge(new_edge)
-            node.add_edge(new_edge)
+            self.create_edge(parent_node=document_nodes[i], child_node=node, edge_type="Flow")
 
     def build_structural_edges(self, document: dict):
         """Builds edges which represent ownership i.e. document owns headings, headings own paragraphs."""
@@ -129,12 +126,16 @@ class KnowledgeGraph:
 
                 if p_level < node_level:
                     # It's the owner
-                    new_edge = Edge(p, node, "Structural")
-                    self.edges.append(new_edge)
-                    p.add_edge(new_edge)
-                    node.add_edge(new_edge)
+                    self.create_edge(parent_node=p, child_node=node, edge_type="Structural")
 
                     break
+
+    def create_edge(self, parent_node: Node, child_node: Node, edge_type: str):
+        """The only place where edges can be created."""
+        new_edge = Edge(parent_node, child_node, edge_type)
+        self.edges.append(new_edge)
+        parent_node.add_edge(new_edge)
+        child_node.add_edge(new_edge)
 
     def create_document_edges(self, document: dict):
         self._run_operation()
@@ -166,16 +167,9 @@ class KnowledgeGraph:
                             if word_1 == word_2:
                                 new_node = self.create_new_inferred_entity(word_1)
                                 if new_node is not None:
-                                    new_edge_1 = Edge(parent=new_node, child=node_1, edge_type=f"Keyword-{word_1}")
-                                    new_edge_2 = Edge(parent=new_node, child=node_2, edge_type=f"Keyword-{word_1}")
-                                    self.edges.append(new_edge_1)
-                                    self.edges.append(new_edge_2)
-
-                                    new_node.add_edge(new_edge_1)
-                                    new_node.add_edge(new_edge_2)
-
-                                    node_1.add_edge(new_edge_1)
-                                    node_2.add_edge(new_edge_2)
+                                    self.create_edge(parent_node=new_node, child_node=node_1, edge_type=f"Keyword-{word_1}")
+                                    self.create_edge(parent_node=new_node, child_node=node_2,
+                                                     edge_type=f"Keyword-{word_1}")
 
     def create_new_inferred_entity(self, content: str):
         """Checks if a new word exists as an entity in the graph already and that it isnt a common word. If not, it

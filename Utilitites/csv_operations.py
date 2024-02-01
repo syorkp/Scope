@@ -29,8 +29,13 @@ def save_graph_to_csv(graph, file_name):
         "content": [node.content for node in graph.nodes],
         "id_n": [node.id_n for node in graph.nodes],
         "level": [node.level for node in graph.nodes],
-        "document": [node.document_name for node in graph.nodes]
+        "document": [node.document_name for node in graph.nodes],
     }
+
+    if graph.nodes[0].embedding is not None:
+        nodes["pca_encoding_x"] = [node.embedding[0] for node in graph.nodes]
+        nodes["pca_encoding_y"] = [node.embedding[1] for node in graph.nodes]
+
     nodes_pandas = pd.DataFrame(nodes)
     nodes_pandas.to_csv(f"Data/Saved-Graphs/CSV/{file_name}-nodes.csv", index=False)
 

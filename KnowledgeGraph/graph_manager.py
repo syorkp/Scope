@@ -2,10 +2,13 @@ import copy
 import cProfile
 import pstats
 
-from Utilitites.json_operations import load_json_entity
-from Utilitites.csv_operations import save_graph_to_csv, load_graph_elements_from_csv
-from KnowledgeGraph.graph import KnowledgeGraph
 from KnowledgeGraph.edges import Edge
+from KnowledgeGraph.graph import KnowledgeGraph
+
+from Webscraper.wikipedia_scraper import WikipediaScraper
+
+from Utilitites.csv_operations import save_graph_to_csv, load_graph_elements_from_csv
+from Utilitites.json_operations import load_json_entity
 
 
 class GraphManager:
@@ -70,6 +73,57 @@ class GraphManager:
 
             parent_node.add_edge(new_edge)
             child_node.add_edge(new_edge)
+
+    def build_graph_from_wikipedia_url(self, graph_name: str, url: str, degree: int):
+        """
+
+        :param graph_name:
+        :param url: Wikipedia URL
+        :param degree: The degree of separation with the original article to be included. 0 would only use the original
+        page.
+        :return:
+        """
+        # Create a wikipedia scraper
+        wiki_scraper = WikipediaScraper(starting_url=url)
+
+        # Creates json for the original page combined with all articles with separation within degrees. Also keeps
+        # track of links between original and others.
+        original_article_name = wiki_scraper.create_wiki_json_from_article_links(degree=degree)
+
+        # Load the json of the documents and their links.
+        documents = load_json_entity(f"{original_article_name}-{degree}.json")
+        original_document = documents[0][original_article_name]
+        across_document_links = load_json_entity(f"{original_article_name}-{degree}_links.json")
+
+        # Initialise graph - create all nodes etc.
+        self.create_graph(graph_name=graph_name)
+        for document in documents:
+            doc_name = list(document.keys())[0]
+            self.graphs[graph_name].add_document_to_graph(document, document_name=doc_name)
+
+        # Create the across-document edges
+        for key_1 in across_document_links.keys():
+            for key_2 in across_document_links[key_1].keys():
+                for key_3 in across_document_links[key_1][key_2].keys():
+                    for p, para in enumerate(across_document_links[key_1][key_2][key_3]):
+                        # Find the parent node (the node in the original document)
+                        original_document_content = documents[0][key_1][key_2][key_3][p]
+                        parent_node_index = self.graphs[graph_name].node_content.index(original_document_content)
+                        parent_node = self.graphs[graph_name].nodes[parent_node_index]
+
+                        for linked_document in para:
+                            # TODO: Build a method to find the ID of a point in a document, use to set the IDs, as well
+                            #  as to provide a means of accessing them more easily.
+
+                            # Find the child node (the linked document)
+                            child_node_index = self.graphs[graph_name].node_content.index(linked_document)
+                            child_node = self.graphs[graph_name].nodes[child_node_index]
+
+                            # Create link with contents
+                            self.graphs[graph_name].create_edge(parent_node=parent_node, child_node=child_node,
+                                                                edge_type="Hyperlink")
+        # TODO: Find way to build ownership edges into system for de/reconstruction.
+        # TODO: Get all links in between pages already existing
 
     def create_graph(self, graph_name: str):
         if graph_name in self.graphs.keys():
