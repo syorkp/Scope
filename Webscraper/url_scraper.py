@@ -22,13 +22,16 @@ from bs4 import BeautifulSoup as bs
 import json
 
 
-def prettify_html(html):
+# TODO: None of this is currently used.
+
+
+def prettify_html(html: str):
     soup = bs(html)  # make BeautifulSoup
     prettyHTML = soup.prettify()  # prettify the html
     return prettyHTML
 
 
-def get_soup(url):
+def get_soup(url: str):
     page = requests.get(url)
     soup = bs(page.content, "html.parser")
     return soup
@@ -94,7 +97,7 @@ def get_all_links(python_job_elements):
             print(f"Apply here: {link_url}\n")
 
 
-def remove_all_html(url):
+def remove_all_html(url: str):
     soup = get_soup(url)
 
     for data in soup(['style', 'script']):
@@ -104,13 +107,14 @@ def remove_all_html(url):
     text = text.strip()
 
 
-# Can extract all the text (no html). This preserves indentation.
-# Can instead extract specific HTML elements by their ID.
-# print(results.prettify())
-# Find all HTML class names
+if __name__ == "__main__":
+    # Can extract all the text (no html). This preserves indentation.
+    # Can instead extract specific HTML elements by their ID.
+    # print(results.prettify())
+    # Find all HTML class names
 
 
-url1 = "https://en.wikipedia.org/wiki/Friedrich_Nietzsche"
-url2 = "https://en.wikipedia.org/wiki/Composer"
-convert_wikipedia(url1)
+    url1 = "https://en.wikipedia.org/wiki/Friedrich_Nietzsche"
+    url2 = "https://en.wikipedia.org/wiki/Composer"
+    convert_wikipedia(url1)
 

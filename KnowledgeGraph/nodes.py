@@ -1,4 +1,5 @@
 import weakref
+
 from KnowledgeGraph.edges import Edge
 
 
@@ -27,10 +28,10 @@ class Node:
         edge_to_remove_index = edge_ids.index(edge_to_remove.identifier)
         del self.edges[edge_to_remove_index]
 
-    def get_child_edges(self):
+    def get_child_edges(self) -> list[Edge]:
         return [edge() for edge in self.edges if edge().parent_node is self]
 
-    def get_parent_edges(self):
+    def get_parent_edges(self) -> list[Edge]:
         return [edge() for edge in self.edges if edge().child_node is self]
 
     def compute_individual_word_indices(self):
@@ -46,7 +47,7 @@ class Node:
         for i in reversed(to_remove):
             del self.edges[i]
 
-    def decompose(self, existing_nodes_at_level):
+    def decompose(self, existing_nodes_at_level: int) -> (list, list[Edge]):
         # TODO: Compartmentalise this class
         if self.splits_into > 1:
             new_edges = []

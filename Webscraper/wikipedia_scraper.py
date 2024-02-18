@@ -1,5 +1,6 @@
 import json
 import requests
+import bs4
 from bs4 import BeautifulSoup as bs
 
 
@@ -36,7 +37,7 @@ class WikipediaScraper:
         ]
 
     @staticmethod
-    def check_url_is_wikipedia(url):
+    def check_url_is_wikipedia(url: str) -> bool:
         """Checks if the URL is an English wikipedia page.
         I.e. if it includes en.wikipedia.org/wiki/
         Can change this in future to permit/refuse on different criteria.
@@ -46,12 +47,12 @@ class WikipediaScraper:
         else:
             return False
 
-    def get_wiki_page_name(self, url):
+    def get_wiki_page_name(self, url: str) -> str:
         soup, title = self.load_soup(url)
         return soup.title.string
 
     @staticmethod
-    def check_href_is_wikipedia(href):
+    def check_href_is_wikipedia(href: str) -> bool:
         """Checks if the URL is an English wikipedia page.
         I.e. if it includes en.wikipedia.org/wiki/
         Can change this in future to permit/refuse on different criteria.
@@ -62,18 +63,18 @@ class WikipediaScraper:
             return False
 
     @staticmethod
-    def load_soup(url):
+    def load_soup(url: str) -> (bs, str):
         page = requests.get(url)
         soup = bs(page.content, "html.parser")
         title = soup.title.string
         return soup, title
 
-    def remove_all_wikipedia_motifs(self, text):
+    def remove_all_wikipedia_motifs(self, text: str) -> str:
         for motif in self.known_motifs:
             text = text.replace(motif, "")
         return text
 
-    def identify_links(self, tag):
+    def identify_links(self, tag: bs4.element.Tag) -> list:
         """Given a tag, returns appropriate wikipedia links, excluding those of identified types."""
         web_links = tag.select("a")
         wiki_urls = []
@@ -104,7 +105,7 @@ class WikipediaScraper:
 
         return wiki_urls
 
-    def strip_contents(self, soup):
+    def strip_contents(self, soup: bs4.BeautifulSoup) -> (dict, dict):
         """
         Method to strip all the contents from the created soup.
 
@@ -162,7 +163,7 @@ class WikipediaScraper:
         return wiki_contents, wiki_links
 
     @staticmethod
-    def remove_empty_scopes(wiki_contents, wiki_links):
+    def remove_empty_scopes(wiki_contents: dict, wiki_links: dict) -> (dict, dict):
         for key_1 in wiki_contents.keys():
             for key_2 in wiki_contents[key_1].keys():
                 for key_3 in wiki_contents[key_1][key_2].keys():
@@ -187,7 +188,7 @@ class WikipediaScraper:
         return wiki_contents, wiki_links
 
     @staticmethod
-    def save_json(document, links, title):
+    def save_json(document: dict or list, links: dict or list, title: str):
         with open(f"Data/Entities/{title}.json", "w") as file:
             as_json = json.dumps(document)
             file.write(as_json)
@@ -195,7 +196,7 @@ class WikipediaScraper:
             as_json = json.dumps(links)
             file.write(as_json)
 
-    def _create_wiki_json(self, url):
+    def _create_wiki_json(self, url: str) -> (dict, dict, str):
         soup, title = self.load_soup(url)
         document, links = self.strip_contents(soup)
         document, links = self.remove_empty_scopes(document, links)
@@ -209,7 +210,7 @@ class WikipediaScraper:
         document, links, title = self._create_wiki_json(url=self.starting_url)
         self.save_json(document, links, title)
 
-    def build_from_document_links_list(self, links: list):
+    def build_from_document_links_list(self, links: list) -> (list, list):
         """For interior parts of document links composed of lists"""
         links_names = []
         links_documents = []
@@ -233,7 +234,7 @@ class WikipediaScraper:
 
         return links_names, links_documents
 
-    def build_from_document_links(self, links: dict):
+    def build_from_document_links(self, links: dict) -> (dict, dict):
 
         # For creating names for each of the linked pages.
         links_names = {}
@@ -293,7 +294,8 @@ class WikipediaScraper:
         # Get all link lists and documents for the given lists.
         x = True
 
-    def _convert_nested_document_dict_to_unnested_list(self, nested_docs: dict, original_document_structure: dict, degree: int):
+    def _convert_nested_document_dict_to_unnested_list(self, nested_docs: dict, original_document_structure: dict,
+                                                       degree: int) -> list:
         compiled_documents = []
         if degree == 1:
             for key in original_document_structure.keys():
@@ -310,7 +312,7 @@ class WikipediaScraper:
         compiled_documents_flattened = [c for ci in compiled_documents for c in ci]
         return compiled_documents_flattened
 
-    def create_wiki_json_from_article_links(self, degree: int):
+    def create_wiki_json_from_article_links(self, degree: int) -> str:
         document, links, original_page_title = self._create_wiki_json(url=self.starting_url)
 
         # Compile all the links to be mined. Meanwhile, make a note of all the links between them.

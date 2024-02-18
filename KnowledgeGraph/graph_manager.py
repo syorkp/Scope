@@ -19,7 +19,7 @@ class GraphManager:
     # TODO: To add in the ability to run things concurrently e.g. display graphs while also having entity linkage
     #  happening in the background.
 
-    def __init__(self, profile):
+    def __init__(self, profile: bool):
         self.profile = profile
         if self.profile:
             self.profiler = cProfile.Profile()
@@ -141,23 +141,40 @@ class GraphManager:
         file = load_json_entity(json_file_name)
         self.graphs[graph_name].add_document_to_graph(file, json_file_name)
 
-    def run_routine_graph_computations(self, graph_name):
+    def run_routine_graph_computations(self, graph_name: str):
         """Run all the routine operations of the graph. Intended for when all the desired elements have been added to
         the graph"""
         # self.graphs[graph_name].harvest_entity_links()
         self.graphs[graph_name].compute_node_embeddings()
 
-    def add_website_to_graph(self, graph_name: str, url: str):
-        ...  # Utilise above function after creation.
+    def add_website_to_graph(self, graph_name: str, url: str):   # TODO: Test
+        """Given a (wikipedia) URL and a graph name, saves the page to a json file and loads that to a graph."""
 
-    def merge_graphs(self, graph_1_name: str, graph_2_name: str):
+        # Save a website (assumed to be wikipedia) to json.  TODO: In future, build handling for other types of urls.
+        wiki_scraper = WikipediaScraper(starting_url=url)
+        page_name = wiki_scraper.get_wiki_page_name(url=url)
+        wiki_scraper.create_wiki_json_from_original_url()
+
+        # Add the saved website to the graph.
+        self.add_json_to_graph(graph_name=graph_name, json_file_name=page_name)
+
+    def merge_graphs(self, graph_1_name: str, graph_2_name: str, combined_graph_name: str):  # TODO: FINISH and test
+        # Create new combined graph
+        self.create_graph(graph_name=combined_graph_name)
+
+        # Add all nodes and edges to graph.
+        self.graphs[combined_graph_name].nodes += self.graphs[graph_1_name].nodes + \
+                                                  self.graphs[graph_2_name].nodes
+        self.graphs[combined_graph_name].edges += self.graphs[graph_1_name].edges + \
+                                                  self.graphs[graph_2_name].edges
         ...
 
     def split_graphs(self):
-        ...
+        ...  # What could the criteria for a split be?
 
     def create_subgraph(self):
-        ...
+        ...  # Criteria for selection to a subgraph. What would the difference be with split? That there's no overlap
+        # in split?
 
     def display_graph(self, graph_name: str, display_mode: str = "networkx"):
         """

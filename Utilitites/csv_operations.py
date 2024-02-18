@@ -2,17 +2,17 @@ import csv
 import pandas as pd
 
 
-def load_csv(file_name):
+def load_csv(file_name: str):
     ...
 
 
-def load_graph_elements_from_csv(file_name):
+def load_graph_elements_from_csv(file_name: str) -> (pd.DataFrame, pd.DataFrame):
     nodes_pandas = pd.read_csv(f"Data/Saved-Graphs/CSV/{file_name}-nodes.csv")
     edges_pandas = pd.read_csv(f"Data/Saved-Graphs/CSV/{file_name}-edges.csv")
     return nodes_pandas, edges_pandas
 
 
-def save_graph_to_csv(graph, file_name):
+def save_graph_to_csv(graph, file_name: str):   # TODO: Do typing but avoid recursive imports
     # Return two CSV tables as the graph representations.
     edges = {
         "edge_identifier": [edge.identifier for edge in graph.edges],
@@ -40,5 +40,5 @@ def save_graph_to_csv(graph, file_name):
     nodes_pandas.to_csv(f"Data/Saved-Graphs/CSV/{file_name}-nodes.csv", index=False)
 
 
-def save_csv(nodes, edges, file_name):
+def save_csv(nodes, edges, file_name):  # TODO: Decide if is necessary, if not, delete.
     ...

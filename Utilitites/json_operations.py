@@ -1,14 +1,14 @@
 import json
 
 
-def load_json_entity(file_name):
+def load_json_entity(file_name: str) -> dict | list:
     file_name = "Data/Entities/" + file_name
     with open(file_name, "r") as file:
         data = json.load(file)
     return data
 
 
-def load_json_graph(file_name):
+def load_json_graph(file_name: str):
     ...
 
 
@@ -17,6 +17,6 @@ def convert_graph_to_json(graph):
     ...
 
 
-def save_json(graph, file_name):
+def save_json(graph, file_name: str):
     ...
 

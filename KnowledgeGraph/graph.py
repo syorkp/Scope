@@ -24,7 +24,7 @@ class KnowledgeGraph:
     - Everything is object based
     """
 
-    def __init__(self, graph_name, autosave=True):
+    def __init__(self, graph_name: str, autosave: bool = True):
         self.graph_name = graph_name
 
         self.nodes = []
@@ -78,7 +78,7 @@ class KnowledgeGraph:
         for node in self.nodes:
             node.remove_incomplete_edges()
 
-    def create_node(self, level: int, document_name: str, content: str):
+    def create_node(self, level: int, document_name: str, content: str) -> Node:
         if document_name != "Inferred":
             id_n = self.levels_tally[level]
         else:
@@ -171,7 +171,7 @@ class KnowledgeGraph:
                                     self.create_edge(parent_node=new_node, child_node=node_2,
                                                      edge_type=f"Keyword-{word_1}")
 
-    def create_new_inferred_entity(self, content: str):
+    def create_new_inferred_entity(self, content: str) -> Node:
         """Checks if a new word exists as an entity in the graph already and that it isnt a common word. If not, it
         creates a new node named this."""
         all_node_content = self.node_content
@@ -183,7 +183,7 @@ class KnowledgeGraph:
                 self.inferred_entity_count += 1
                 return new_entity
 
-    def return_node(self, node_identifier):
+    def return_node(self, node_identifier: str) -> Node:
         """The most efficient way of identifying the node from the identifier"""
         for node in self.nodes:
             if node.identifier == node_identifier:
