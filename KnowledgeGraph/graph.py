@@ -10,6 +10,7 @@ import numpy as np
 from sklearn.decomposition import PCA
 import gephistreamer
 
+from KnowledgeGraph.graph_precursor import Graph
 from KnowledgeGraph.nodes import Node
 from KnowledgeGraph.edges import Edge
 from Data.Entities.common_words import common_words
@@ -17,7 +18,7 @@ from Utilitites.json_operations import load_json_entity
 from Utilitites.csv_operations import save_graph_to_csv
 
 
-class KnowledgeGraph:
+class KnowledgeGraph(Graph):
     """Principles underlying design
     - do not store information in more than one place unless this is accomplished through weak references (thus deletion
     of one is deletion everywhere).
@@ -42,6 +43,9 @@ class KnowledgeGraph:
         self.autosave_graph = autosave
         self.maintained_formats = []
 
+        self.incidence_matrix = None
+        self.adjacency_matrix = None
+
     def _run_operation(self):
         """
         A method that runs every time a major operation occurs, to allow maintenance to be carried out e.g. autosave.
@@ -61,6 +65,34 @@ class KnowledgeGraph:
         self.documents_used.append(document_name)
         self.create_nodes(data, document_name, level=0)
         self.create_document_edges(document_name)
+
+    def compute_adjacency_matrix(self):
+        """Produces adjacency/connectivity matrix."""
+        node_identifiers = [node.identifier for node in self.nodes]
+        num_nodes = len(node_identifiers)
+        adjacency_matrix = np.zeros((num_nodes, num_nodes))
+        for edge in self.edges:
+            start_node_index = node_identifiers.index(edge[0])
+            end_node_index = node_identifiers.index(edge[1])
+            adjacency_matrix[start_node_index, end_node_index] += 1
+
+        self.adjacency_matrix = adjacency_matrix
+
+    def compute_incidence_matrix(self):
+        node_identifiers = [node.identifier for node in self.nodes]
+
+        num_nodes = len(node_identifiers)
+        num_edges = len(self.edges)
+
+        incidence_matrix = np.zeros((num_nodes, num_edges))
+        for e, edge in enumerate(self.edges):
+            start_node_index = node_identifiers.index(edge.parent_node)
+            end_node_index = node_identifiers.index(edge.child_node)
+
+            incidence_matrix[start_node_index, e] += 1
+            incidence_matrix[end_node_index, e] -= 1
+
+        self.incidence_matrix = incidence_matrix
 
     def remove_invalid_edges_and_nodes(self):
         """Checks all edge/nodes to see if their weak references to their nodes/edges are to Nonetypes - i.e.  the node
@@ -106,16 +138,16 @@ class KnowledgeGraph:
                     self.create_node(level, document_name, key)
                 self.create_nodes(data[key], document_name, level+1)
 
-    def build_flow_edges(self, document: dict):
+    def build_flow_edges(self, document_name: str):
         """Adds all edges that make up the structure of the document read from top to bottom."""
-        document_nodes = [node for node in self.nodes if node.document_name == document]
+        document_nodes = [node for node in self.nodes if node.document_name == document_name]
 
         for i, node in enumerate(document_nodes[1:]):
             self.create_edge(parent_node=document_nodes[i], child_node=node, edge_type="Flow")
 
-    def build_structural_edges(self, document: dict):
+    def build_structural_edges(self, document_name: str):
         """Builds edges which represent ownership i.e. document owns headings, headings own paragraphs."""
-        document_nodes = [node for node in self.nodes if node.document_name == document]
+        document_nodes = [node for node in self.nodes if node.document_name == document_name]
 
         for i, node in enumerate(reversed(document_nodes)):
             node_level = node.level
@@ -137,11 +169,11 @@ class KnowledgeGraph:
         parent_node.add_edge(new_edge)
         child_node.add_edge(new_edge)
 
-    def create_document_edges(self, document: dict):
+    def create_document_edges(self, document_name: str):
         self._run_operation()
 
-        self.build_flow_edges(document)
-        self.build_structural_edges(document)
+        self.build_flow_edges(document_name)
+        self.build_structural_edges(document_name)
 
     def harvest_entity_links(self):
         """
@@ -188,7 +220,7 @@ class KnowledgeGraph:
         for node in self.nodes:
             if node.identifier == node_identifier:
                 return node
-        print("Node does not exist")
+        raise Exception("Node does not exist")
 
     def compute_node_embeddings(self):
         self._run_operation()

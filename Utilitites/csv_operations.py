@@ -1,6 +1,8 @@
 import csv
 import pandas as pd
 
+from KnowledgeGraph.graph_precursor import Graph
+
 
 def load_csv(file_name: str):
     ...
@@ -12,7 +14,7 @@ def load_graph_elements_from_csv(file_name: str) -> (pd.DataFrame, pd.DataFrame)
     return nodes_pandas, edges_pandas
 
 
-def save_graph_to_csv(graph, file_name: str):   # TODO: Do typing but avoid recursive imports
+def save_graph_to_csv(graph: Graph, file_name: str):   # TODO: Do typing but avoid recursive imports
     # Return two CSV tables as the graph representations.
     edges = {
         "edge_identifier": [edge.identifier for edge in graph.edges],
@@ -39,6 +41,3 @@ def save_graph_to_csv(graph, file_name: str):   # TODO: Do typing but avoid recu
     nodes_pandas = pd.DataFrame(nodes)
     nodes_pandas.to_csv(f"Data/Saved-Graphs/CSV/{file_name}-nodes.csv", index=False)
 
-
-def save_csv(nodes, edges, file_name):  # TODO: Decide if is necessary, if not, delete.
-    ...

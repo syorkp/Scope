@@ -1,5 +1,6 @@
 import weakref
 
+
 from KnowledgeGraph.edges import Edge
 
 

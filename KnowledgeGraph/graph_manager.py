@@ -190,7 +190,7 @@ class GraphManager:
         elif display_mode == "networkx":
             self.graphs[graph_name].display_graph_networkx()
         else:
-            print("Invalid display mode given.")
+            raise Exception("Invalid display mode given.")
 
     def decompose_graph(self, graph_name: str):
         """
@@ -215,7 +215,7 @@ class GraphManager:
             self.graphs[new_graph_name].decompose_nodes()
             self.graphs[new_graph_name].remove_invalid_edges_and_nodes()
         else:
-            print("Graph is not decomposable")
+            raise Exception("Graph is not decomposable")
 
     def close(self):
         if self.profile:

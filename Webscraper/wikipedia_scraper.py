@@ -254,7 +254,7 @@ class WikipediaScraper:
 
         return links_documents, links_names
 
-    def create_wiki_json_from_link_compliation(self, links):
+    def create_wiki_json_from_link_compliation(self, links: dict):  # TODO: Work out if this is still in use.
         """
         Returns lists of all documents belonging to the links, and their respective links.
 
