@@ -8,12 +8,11 @@ import spacy
 import numpy as np
 
 from sklearn.decomposition import PCA
-import gephistreamer
 
 from KnowledgeGraph.graph_precursor import Graph
 from KnowledgeGraph.nodes import Node
 from KnowledgeGraph.edges import Edge
-from Data.Entities.common_words import common_words
+from common_words import common_words
 from Utilitites.json_operations import load_json_entity
 from Utilitites.csv_operations import save_graph_to_csv
 
