@@ -315,6 +315,10 @@ class WikipediaScraper:
     def create_wiki_json_from_article_links(self, degree: int) -> str:
         document, links, original_page_title = self._create_wiki_json(url=self.starting_url)
 
+        if degree == 0:
+            self.save_json([document], links, f"{original_page_title}-{degree}")
+            return original_page_title
+
         # Compile all the links to be mined. Meanwhile, make a note of all the links between them.
         sub_documents, sub_names = self.build_from_document_links(links)
 

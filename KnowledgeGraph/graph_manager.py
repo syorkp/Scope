@@ -46,29 +46,39 @@ class GraphManager:
 
         # Creating nodes
         node_contents = graph_nodes.content
-        node_id_n = graph_nodes.id_n
-        node_level = graph_nodes.level
+        node_id_ns = graph_nodes.id_n
+        node_levels = graph_nodes.level
         node_identifiers = graph_nodes.node_identifier
         node_documents = graph_nodes.document
 
-        for identifier, level, id_n, content, document in zip(node_identifiers, node_level, node_id_n, node_contents,
-                                                              node_documents):
-            new_node = new_graph.create_node(level=level, document_name=document, content=content)
-            new_node.id_n = id_n
-            new_node.identifier = identifier
+        for node_identifier, node_level, node_id_n, node_content, node_document in zip(node_identifiers, node_levels,
+                                                                                       node_id_ns, node_contents,
+                                                                                       node_documents):
+            new_node = new_graph.create_node(level=node_level, document_name=node_document, content=node_content)
+            new_node.id_n = node_id_n
+            new_node.identifier = node_identifier
 
         # Creating Edges
         edge_identifiers = graph_edges.edge_identifier
-        edge_type = graph_edges.edge_type
-        edge_weight = graph_edges.edge_weight
-        edge_source = graph_edges.source
-        edge_target = graph_edges.target
+        edge_types = graph_edges.edge_type
+        edge_weights = graph_edges.edge_weight
+        edge_sources = graph_edges.source
+        edge_targets = graph_edges.target
 
-        for identifier, type, weight, source, target in zip(edge_identifiers, edge_type, edge_weight, edge_source,
-                                                            edge_target):
-            parent_node = new_graph.return_node(source)
-            child_node = new_graph.return_node(target)
-            new_edge = Edge(parent=parent_node, child=child_node, edge_type=type, edge_weight=weight)
+        for edge_identifier, edge_type, edge_weight, edge_source, edge_target in zip(edge_identifiers, edge_types,
+                                                                                     edge_weights, edge_sources,
+                                                                                     edge_targets):
+            try:
+                parent_node = new_graph.return_node(edge_source)
+            except Exception:
+                raise Exception("Necessary node has not been created from CSV loading")
+
+            try:
+                child_node = new_graph.return_node(edge_target)
+            except Exception:
+                raise Exception("Necessary node has not been created from CSV loading")
+
+            new_edge = Edge(parent=parent_node, child=child_node, edge_type=edge_type, edge_weight=edge_weight)
             new_graph.edges.append(new_edge)
 
             parent_node.add_edge(new_edge)
@@ -100,6 +110,10 @@ class GraphManager:
         for document in documents:
             doc_name = list(document.keys())[0]
             self.graphs[graph_name].add_document_to_graph(document, document_name=doc_name)
+
+        # If degree is zero, dont bother truing to build across-document links.
+        if degree == 0:
+            return
 
         # Create the across-document edges
         for key_1 in across_document_links.keys():
@@ -147,7 +161,7 @@ class GraphManager:
         # self.graphs[graph_name].harvest_entity_links()
         self.graphs[graph_name].compute_node_embeddings()
 
-    def add_website_to_graph(self, graph_name: str, url: str):   # TODO: Test
+    def add_website_to_graph(self, graph_name: str, url: str):
         """Given a (wikipedia) URL and a graph name, saves the page to a json file and loads that to a graph."""
 
         # Save a website (assumed to be wikipedia) to json.  TODO: In future, build handling for other types of urls.
@@ -156,9 +170,9 @@ class GraphManager:
         wiki_scraper.create_wiki_json_from_original_url()
 
         # Add the saved website to the graph.
-        self.add_json_to_graph(graph_name=graph_name, json_file_name=page_name)
+        self.add_json_to_graph(graph_name=graph_name, json_file_name=f"{page_name}.json")
 
-    def merge_graphs(self, graph_1_name: str, graph_2_name: str, combined_graph_name: str):  # TODO: FINISH and test
+    def merge_graphs(self, graph_1_name: str, graph_2_name: str, combined_graph_name: str):
         # Create new combined graph
         self.create_graph(graph_name=combined_graph_name)
 
@@ -167,7 +181,9 @@ class GraphManager:
                                                   self.graphs[graph_2_name].nodes
         self.graphs[combined_graph_name].edges += self.graphs[graph_1_name].edges + \
                                                   self.graphs[graph_2_name].edges
-        ...
+
+        # TODO: Build in checking for node repeats and remove but keep all unique edges.
+
 
     def split_graphs(self):
         ...  # What could the criteria for a split be?

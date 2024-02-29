@@ -283,6 +283,7 @@ class KnowledgeGraph(Graph):
         # The following instead just launces gephi with the csv.
         # Save csv
         save_graph_to_csv(graph=self, file_name=self.graph_name)
+        # Launch gephi with the csv containing the edges. Note that this will exclude any isolated nodes.
         os.system(f"/home/sam/Programs/gephi-0.10.1/bin/gephi ./Data/Saved-Graphs/CSV/{self.graph_name}-edges.csv")
 
     def delete_node(self, node_id: str):
