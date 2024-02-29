@@ -8,3 +8,4 @@ gephistreamer
 scikit-learn
 sklearn
 word2number
+pandas

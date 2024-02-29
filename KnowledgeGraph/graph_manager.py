@@ -1,5 +1,6 @@
 import copy
 import cProfile
+import os
 import pstats
 
 from KnowledgeGraph.edges import Edge
@@ -26,6 +27,21 @@ class GraphManager:
             self.profiler.enable()
 
         self.graphs = {}
+        self.build_directories()
+
+    @staticmethod
+    def build_directories():
+        print("Building dirs")
+        if not os.path.isdir("Data"):
+            os.mkdir("Data")
+        if not os.path.isdir("Data/Entities"):
+            os.mkdir("Data/Entities")
+        if not os.path.isdir("Data/PDFs"):
+            os.mkdir("Data/PDFs")
+        if not os.path.isdir("Data/Entities/Saved-Graphs"):
+            os.mkdir("Data/Entities/Saved-Graphs")
+        if not os.path.isdir("Data/Entities/Saved-Graphs/CSV"):
+            os.mkdir("Data/Entities/Saved-Graphs/CSV")
 
     def save_graph(self, graph_name: str):
         """
