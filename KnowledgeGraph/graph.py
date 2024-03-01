@@ -22,6 +22,8 @@ class KnowledgeGraph(Graph):
     - do not store information in more than one place unless this is accomplished through weak references (thus deletion
     of one is deletion everywhere).
     - Everything is object based
+
+    Shouldn't use print at this level, rather raise exceptions.
     """
 
     def __init__(self, graph_name: str, autosave: bool = True):
@@ -315,6 +317,12 @@ class KnowledgeGraph(Graph):
         del self.nodes[node_index]
 
         # TODO: Update levels tally
+
+    def remove_node_repeats(self):
+        ...
+
+    def remove_edge_repeats(self):
+        ...
 
     def decompose_nodes(self):
         """

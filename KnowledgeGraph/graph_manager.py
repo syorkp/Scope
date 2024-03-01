@@ -15,6 +15,8 @@ from Utilitites.json_operations import load_json_entity
 class GraphManager:
     """
     Manager class to handle multiple graphs and graph-graph operations.
+
+    Most methods should print a log of what is happening.
     """
 
     # TODO: To add in the ability to run things concurrently e.g. display graphs while also having entity linkage
@@ -29,9 +31,10 @@ class GraphManager:
         self.graphs = {}
         self.build_directories()
 
+        print("Graph Manger created")
+
     @staticmethod
     def build_directories():
-        print("Building dirs")
         if not os.path.isdir("Data"):
             os.mkdir("Data")
         if not os.path.isdir("Data/Entities"):
@@ -43,6 +46,8 @@ class GraphManager:
         if not os.path.isdir("Data/Entities/Saved-Graphs/CSV"):
             os.mkdir("Data/Entities/Saved-Graphs/CSV")
 
+        print("Data directories initialised")
+
     def save_graph(self, graph_name: str):
         """
         Save graph to hard drive.
@@ -52,6 +57,8 @@ class GraphManager:
 
         # TODO: Build capability to save in other formats.
         save_graph_to_csv(self.graphs[graph_name], graph_name)
+
+        print("Graph saved")
 
     def load_graph_csv(self, graph_name: str, file_name: str):
         """Loads a full graph from CSV."""
@@ -99,6 +106,8 @@ class GraphManager:
 
             parent_node.add_edge(new_edge)
             child_node.add_edge(new_edge)
+
+        print("Graph loaded from CSV")
 
     def build_graph_from_wikipedia_url(self, graph_name: str, url: str, degree: int):
         """
@@ -154,6 +163,7 @@ class GraphManager:
                                                                 edge_type="Hyperlink")
         # TODO: Find way to build ownership edges into system for de/reconstruction.
         # TODO: Get all links in between pages already existing
+        print(f"Graph {graph_name} created from Wikipedia URL")
 
     def create_graph(self, graph_name: str):
         if graph_name in self.graphs.keys():
@@ -166,16 +176,21 @@ class GraphManager:
                 return
         self.graphs[graph_name] = KnowledgeGraph(graph_name)
 
+        print(f"Created new graph: {graph_name}")
+
     def add_json_to_graph(self, graph_name: str, json_file_name: str):
         """Add a new json-encoded document to the graph."""
         file = load_json_entity(json_file_name)
         self.graphs[graph_name].add_document_to_graph(file, json_file_name)
+
+        print(f"Added JSON {json_file_name} to graph {graph_name}")
 
     def run_routine_graph_computations(self, graph_name: str):
         """Run all the routine operations of the graph. Intended for when all the desired elements have been added to
         the graph"""
         # self.graphs[graph_name].harvest_entity_links()
         self.graphs[graph_name].compute_node_embeddings()
+        print(f"Node embeddings computed for graph {graph_name}")
 
     def add_website_to_graph(self, graph_name: str, url: str):
         """Given a (wikipedia) URL and a graph name, saves the page to a json file and loads that to a graph."""
@@ -187,6 +202,7 @@ class GraphManager:
 
         # Add the saved website to the graph.
         self.add_json_to_graph(graph_name=graph_name, json_file_name=f"{page_name}.json")
+        print(f"Added URL {url} to graph {graph_name}")
 
     def merge_graphs(self, graph_1_name: str, graph_2_name: str, combined_graph_name: str):
         # Create new combined graph
@@ -197,9 +213,10 @@ class GraphManager:
                                                   self.graphs[graph_2_name].nodes
         self.graphs[combined_graph_name].edges += self.graphs[graph_1_name].edges + \
                                                   self.graphs[graph_2_name].edges
+        # TODO: Check if I need to do a deep copy
 
+        print(f"Merged graphs {graph_1_name} and {graph_2_name} to {combined_graph_name}")
         # TODO: Build in checking for node repeats and remove but keep all unique edges.
-
 
     def split_graphs(self):
         ...  # What could the criteria for a split be?
@@ -216,6 +233,7 @@ class GraphManager:
         :return:
         """
         self.graphs[graph_name].remove_invalid_edges_and_nodes()
+        print(f"Invalid graph {graph_name} edges and nodes removed.")
 
         if display_mode == "gephi":
             self.graphs[graph_name].display_graph_gephi()
@@ -238,7 +256,7 @@ class GraphManager:
                 decomposable = True
                 break
         if decomposable:
-            print("Decomposing graph.")
+            print(f"Decomposing graph {graph_name}.")
             if graph_name[-1].isdigit():
                 new_graph_name = f"{graph_name[:-1]}{(int(graph_name[-1]) + 1)}"
             else:
@@ -247,7 +265,7 @@ class GraphManager:
             self.graphs[new_graph_name].decompose_nodes()
             self.graphs[new_graph_name].remove_invalid_edges_and_nodes()
         else:
-            raise Exception("Graph is not decomposable")
+            raise Exception(f"Graph {graph_name} is not decomposable")
 
     def close(self):
         if self.profile:
