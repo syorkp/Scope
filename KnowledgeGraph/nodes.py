@@ -6,6 +6,8 @@ from KnowledgeGraph.edges import Edge
 
 class Node:
 
+    """Basic Node class."""
+
     def __init__(self, level: int, id_n: int, document_name: str, content: str):
         self.identifier = f"{document_name}-{level}:{id_n}"
         self.id_n = id_n
@@ -22,23 +24,51 @@ class Node:
         self.splits_into = len(content.split(". "))
 
     def add_edge(self, edge: Edge):
+        """
+        Adds a weakref to the edges attribute to the specified edge.
+
+        :param edge: The edge to add to the attribute.
+        """
         self.edges.append(weakref.ref(edge))
 
     def remove_edge(self, edge_to_remove: Edge):
+        """
+        Removes an edge from the edges attribute.
+
+        :param edge_to_remove:
+        :return:
+        """
         edge_ids = [edge().identifier for edge in self.edges]
         edge_to_remove_index = edge_ids.index(edge_to_remove.identifier)
         del self.edges[edge_to_remove_index]
 
     def get_child_edges(self) -> list[Edge]:
+        """
+        Returns a list of edges where the parent node is self.
+
+        :return: List of edges where this is the parent node.
+        """
+
         return [edge() for edge in self.edges if edge().parent_node is self]
 
     def get_parent_edges(self) -> list[Edge]:
+        """
+        Returns a list of edges where the child node is self.
+
+        :return: List of edges where this is the child node.
+        """
+
         return [edge() for edge in self.edges if edge().child_node is self]
 
     def compute_individual_word_indices(self):
         ...
 
     def remove_incomplete_edges(self):
+        """
+        Removes all edges from edges attribute that dont point to an existing Edge object (i.e. that edge has since
+        been deleted).
+        """
+
         to_remove = []
 
         for i, edge in enumerate(self.edges):
@@ -49,6 +79,15 @@ class Node:
             del self.edges[i]
 
     def decompose(self, existing_nodes_at_level: int) -> (list, list[Edge]):
+        """
+        Creates nodes out of sentences within this node (if possible). Preserves all structural edges identically.
+        Creates new flow edges to reflect the splitting.
+        Preserves inferred edges for points where the inferred entity exists within new node only.
+
+        :param existing_nodes_at_level: Number of nodes that exist at the new level (for node identifier assignment).
+        :return: List of new nodes, list of new edges.
+        """
+
         # TODO: Compartmentalise this class
         if self.splits_into > 1:
             new_edges = []

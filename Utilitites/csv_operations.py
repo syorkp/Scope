@@ -9,12 +9,26 @@ def load_csv(file_name: str):
 
 
 def load_graph_elements_from_csv(file_name: str) -> (pd.DataFrame, pd.DataFrame):
+    """
+    Loads csv of saved nodes and edges to pandas DataFrame.
+
+    :param file_name: CSV file name (doesnt include -nodes/edges or .csv suffix.
+    :return: Two pandas DataFrames of the nodes and edges.
+    """
+
     nodes_pandas = pd.read_csv(f"Data/Saved-Graphs/CSV/{file_name}-nodes.csv")
     edges_pandas = pd.read_csv(f"Data/Saved-Graphs/CSV/{file_name}-edges.csv")
     return nodes_pandas, edges_pandas
 
 
 def save_graph_to_csv(graph: Graph, file_name: str):   # TODO: Do typing but avoid recursive imports
+    """
+    Provided a KnowledgeGraph instance, saves all relevant information about it to a csv to allow full recovery.
+    :param graph: A KnowledgeGraph instance.
+    :param file_name: CSV file name (doesnt include -nodes/edges or .csv suffix.
+    :return:
+    """
+
     # Return two CSV tables as the graph representations.
     edges = {
         "edge_identifier": [edge.identifier for edge in graph.edges],

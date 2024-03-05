@@ -2,6 +2,13 @@ import json
 
 
 def load_json_entity(file_name: str) -> dict | list:
+    """
+    Loads and returns a json file from Data/Entities/ dir.
+
+    :param file_name:
+    :return:
+    """
+
     file_name = "Data/Entities/" + file_name
     with open(file_name, "r") as file:
         data = json.load(file)
