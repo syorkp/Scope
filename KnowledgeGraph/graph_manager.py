@@ -31,7 +31,7 @@ class GraphManager:
         self.graphs = {}
         self._build_directories()
 
-        print("Graph Manger created")
+        print("Graph Manager created")
 
     @staticmethod
     def _build_directories():
@@ -132,7 +132,8 @@ class GraphManager:
 
         # Creates json for the original page combined with all articles with separation within degrees. Also keeps
         # track of links between original and others.
-        original_article_name = wiki_scraper.create_wiki_json_from_article_links(degree=degree)
+        document, links, original_article_name = wiki_scraper.create_wiki_json_from_article_links(url=url, degree=degree)
+        self.save_json([document], links, f"{original_page_title}-{degree}")
 
         # Load the json of the documents and their links.
         documents = load_json_entity(f"{original_article_name}-{degree}.json")
@@ -140,9 +141,15 @@ class GraphManager:
 
         # Initialise graph - create all nodes etc.
         self.create_graph(graph_name=graph_name)
-        for document in documents:
-            doc_name = list(document.keys())[0]
-            self.graphs[graph_name].add_document_to_graph(document, document_name=doc_name)
+        if type(documents) == list:
+            documents = documents[0]
+
+        num_linked_documents = len(documents.keys())
+        print(f"Found {num_linked_documents} Within-Degree Pages")
+
+        for i, doc_name in documents.keys():
+            specified_document = {doc_name: documents[doc_name]}
+            self.graphs[graph_name].add_document_to_graph(specified_document, document_name=doc_name)
 
         # If degree is zero, dont bother truing to build across-document links.
         if degree == 0:
@@ -154,7 +161,7 @@ class GraphManager:
                 for key_3 in across_document_links[key_1][key_2].keys():
                     for p, para in enumerate(across_document_links[key_1][key_2][key_3]):
                         # Find the parent node (the node in the original document)
-                        original_document_content = documents[0][key_1][key_2][key_3][p]
+                        original_document_content = documents[key_1][key_2][key_3][p]
                         parent_node_index = self.graphs[graph_name].node_content.index(original_document_content)
                         parent_node = self.graphs[graph_name].nodes[parent_node_index]
 

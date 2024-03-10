@@ -4,6 +4,9 @@ import bs4
 from bs4 import BeautifulSoup as bs
 
 
+from Utilitites.flatten_dict_to_list import flatten_document_to_list_elements
+
+
 import numpy as np
 
 
@@ -215,7 +218,7 @@ class WikipediaScraper:
         links_names = []
         links_documents = []
 
-        for l in links:
+        for i, l in enumerate(links):
             if type(l) is list:
                 new_names, new_documents = self.build_from_document_links_list(l)
                 links_names.append(new_names)
@@ -223,8 +226,6 @@ class WikipediaScraper:
             else:
                 # Check link is a wikipedia link
                 if self.check_url_is_wikipedia(l):
-                    print(l)
-
                     doc, doc_links, doc_title = self._create_wiki_json(l)
                     links_documents.append(doc)
                     links_names.append(doc_title)
@@ -305,41 +306,56 @@ class WikipediaScraper:
                         if type(contained_elements) is list:
                             compiled_documents += contained_elements
                         else:
-                            print("Error: Function needs to be generalised")
+                            print("Error: Function needs to be generalised")  # TODO: Throw error
         else:
             ...  # TODO: Case for larger degree: Then call recursively with degree-=1
 
         compiled_documents_flattened = [c for ci in compiled_documents for c in ci]
         return compiled_documents_flattened
 
-    def create_wiki_json_from_article_links(self, degree: int) -> str:
-        document, links, original_page_title = self._create_wiki_json(url=self.starting_url)
+    def create_wiki_json_from_article_links(self, url: str,  degree: int) -> (str, list, list):
+        document, links, original_page_title = self._create_wiki_json(url=url)
 
         if degree == 0:
-            self.save_json([document], links, f"{original_page_title}-{degree}")
-            return original_page_title
+            # Note: this is only called when the original degree is specified as zero.
 
-        # Compile all the links to be mined. Meanwhile, make a note of all the links between them.
-        sub_documents, sub_names = self.build_from_document_links(links)
+            return [document], links, original_page_title
+        elif degree == 1:
+            # Compile all the links to be mined. Meanwhile, make a note of all the links between them.
+            sub_documents, sub_names = self.build_from_document_links(links)
 
-        # Flatten all the jsons to a list - the links can be found from the names in the sub_names
-        all_wikis = self._convert_nested_document_dict_to_unnested_list(nested_docs=sub_documents,
-                                                                        original_document_structure=sub_names,
-                                                                        degree=degree)
-        all_wikis.append(document)
+            # Flatten all the jsons to a list - the links can be found from the names in the sub_names
+            all_wikis = self._convert_nested_document_dict_to_unnested_list(nested_docs=sub_documents,
+                                                                            original_document_structure=sub_names,
+                                                                            degree=degree)
+            all_wikis.append(document)
 
-        # Build a dictionary out of all the graph structures (removes repeats)
-        wikis_dict = {}
-        for wiki in all_wikis:
-            key = list(wiki.keys())[0]
-            wikis_dict[key] = wiki[key]
+            # Build a dictionary out of all the graph structures (removes repeats)
+            wikis_dict = {}
+            for wiki in all_wikis:
+                key = list(wiki.keys())[0]
+                wikis_dict[key] = wiki[key]
 
-        self.save_json([wikis_dict], sub_names, f"{original_page_title}-{degree}")
-        return original_page_title
+            return [wikis_dict], sub_names, original_page_title
 
-        # self.create_wiki_json_from_link_compliation(links)   TODO: Work out if any of this is useful
-        # Save all the wikis, then return a list of all the links between them.
+            # self.create_wiki_json_from_link_compliation(links)   TODO: Work out if any of this is useful
+            # Save all the wikis, then return a list of all the links between them.
+        elif degree > 1:
+            # Flatten links from dict to list.
+            links_flattened = flatten_document_to_list_elements(links)
 
+            compiled_documents = [document]
+            compiled_links = [links]
+
+            # For link in list
+            for link in links_flattened:
+                # Call create_wiki recursively, somehow passing through information
+                new_wikis_dict, new_links, new_main_article_name = self.create_wiki_json_from_article_links(url=link,
+                                                                                                            degree=degree-1)  # TODO: NEED to pass through info and change the way it's saved.
+                compiled_documents += new_wikis_dict
+                compiled_links += new_links
+
+            return compiled_documents, compiled_links, original_page_title
 
 if __name__ == "__main__":
     url1 = "https://en.wikipedia.org/wiki/Immanuel_Kant"
